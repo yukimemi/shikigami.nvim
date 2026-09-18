@@ -13,6 +13,12 @@ local T = MiniTest.new_set({
 })
 
 ---A throwaway directory tree; `children` are created as directories.
+---
+---The result is run through `fs_realpath`: on macOS `vim.fn.tempname()`
+---hands back a path under `/var`, which is a symlink to `/private/var`,
+---while `vim.fs.root()` reports the resolved location. Comparing the raw
+---names fails on macOS only — and the difference says nothing about the
+---behaviour under test.
 ---@param children string[]
 ---@return string
 local function tmpdir(children)
@@ -20,7 +26,7 @@ local function tmpdir(children)
   for _, child in ipairs(children) do
     vim.fn.mkdir(dir .. "/" .. child, "p")
   end
-  return dir
+  return vim.fs.normalize(vim.uv.fs_realpath(dir) or dir)
 end
 
 T["argv order: cmd, -R, -r, args, then the command line"] = function()
