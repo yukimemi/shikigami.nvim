@@ -1,0 +1,158 @@
+*shikigami.txt*  Run the shikigami jj TUI inside Neovim
+
+==============================================================================
+INTRODUCTION                                                      *shikigami*
+
+shikigami.nvim is a thin front end for the `shikigami` binary — a ratatui TUI
+for the Jujutsu (jj) version control system:
+
+    https://github.com/yukimemi/shikigami
+
+The plugin resolves the jj repository, builds the command line and runs the
+binary in a Neovim terminal window. All of the UI lives in the binary; this
+plugin adds no keymaps, no highlight groups and no autocmds. Pure Lua, Neovim
+only. Requires Neovim >= 0.10, the `shikigami` binary and `jj` on $PATH.
+
+==============================================================================
+SETUP                                                       *shikigami-setup*
+
+`setup()` is optional: |:Shikigami| is registered eagerly and runs with the
+defaults. Call it to change them.
+
+>lua
+    require("shikigami").setup({
+      cmd = "shikigami",         -- string, or a list: { "cargo", "run", "--" }
+      args = {},                 -- always appended to the command line
+      revset = nil,              -- forwarded as `-r <revset>`
+      repository = nil,          -- forwarded as `-R <path>`; nil = auto-detect
+      auto_detect_root = true,   -- find the jj root from the current buffer
+      auto_reload = true,        -- `:checktime` after the TUI exits
+      close_on_exit = true,      -- close the window when the process exits 0
+      terminal = {
+        opener = "float",        -- see |shikigami-openers|
+        width = 0.9,             -- float only: fraction of the UI
+        height = 0.9,            -- float only: fraction of the UI
+        border = "rounded",      -- float only
+        title = true,            -- float only: show the argv as the title
+      },
+    })
+<
+
+Unknown keys are an error naming the key, at both levels — a typo like
+`terminal = { openner = "split" }` fails loudly instead of leaving you with an
+unexplained float.
+
+                                                   *shikigami-setup-options*
+cmd               The binary, as a string or an argv list. A list lets you run
+                  it through a launcher: `{ "cargo", "run", "--" }`. Only the
+                  first element has to be executable.
+args              Extra arguments appended to every invocation, after the
+                  plugin's own flags and before anything typed after
+                  |:Shikigami|.
+revset            Initial revset for the log pane, forwarded as
+                  `-r <revset>`. Nil leaves the binary's own default.
+repository        Repository to operate on, forwarded as `-R <path>`. Nil
+                  means auto-detect (see `auto_detect_root`).
+auto_detect_root  Walk up from the current buffer (falling back to the cwd)
+                  looking for a `.jj` directory, and pass it as `-R`. Only
+                  `.jj` counts: a colocated repo has `.git` too, but a
+                  git-only repo has no jj log to show, so `:Shikigami`
+                  refuses to start there instead of letting the binary fail.
+                  Set to false to let the binary resolve the repo from its
+                  own cwd.
+auto_reload       Run `:checktime` once the TUI exits. The TUI rewrites the
+                  working copy (`new`, `edit`, `squash`, `rebase`, `abandon`,
+                  `describe`, `undo`), so buffers open on those files would
+                  otherwise sit on stale text. Default true.
+close_on_exit     Close the terminal window when the process exits 0. A
+                  non-zero exit always keeps the window open, so the jj error
+                  text stays readable. Default true.
+
+                                                         *shikigami-openers*
+`terminal.opener` decides which window the terminal is created in:
+
+    "float"     a centered floating window (default), sized by `width` /
+                `height` and drawn with `border`
+    "split"     `:new`
+    "hsplit"    `:new`
+    "vsplit"    `:vnew`
+    "tabnew"    `:tabnew`
+    "tab"       `:tabnew`
+
+Any other string is executed with |vim.cmd()| as-is, e.g.
+`opener = "botright 20split"`. A function is called instead and must leave the
+window it wants the terminal in as the current window.
+
+If an opener leaves a named, modified or non-empty buffer current, the launch
+is aborted with an error rather than turning that buffer into a terminal.
+
+==============================================================================
+COMMANDS                                                 *shikigami-commands*
+
+                                                              *:Shikigami*
+:Shikigami [args]         Open the TUI. Arguments are forwarded to the binary
+                          verbatim, after the configured ones, so they win
+                          when the same flag appears twice.
+
+Completion offers the binary's top-level arguments:
+
+    -R, --repository <PATH>    operate on this repo instead of the cwd
+    -r, --revisions <REVSET>   initial revset for the log pane
+    -h, --help
+    -V, --version
+    completion <bash|zsh|fish|powershell|elvish>
+
+Examples: >
+    :Shikigami
+    :Shikigami -r 'all()'
+    :Shikigami -R ~/src/github.com/yukimemi/shikigami
+    :Shikigami --version
+<
+There are no keymaps and no default mappings: every key inside the window
+belongs to the TUI, and the plugin starts in terminal mode so the first
+keypress reaches it. Use `<C-\><C-n>` to get back to normal mode.
+
+Errors — binary not on $PATH, no `.jj` found — are reported with
+|vim.notify()| at ERROR level, without a stack trace.
+
+==============================================================================
+TERMINAL BUFFER                                          *shikigami-terminal*
+
+The terminal buffer is named `shikigami://<argv tail>` and its 'filetype' is
+set to `shikigami`, so it can be targeted from a |FileType| autocmd, a
+statusline rule or a window picker's ignore list: >lua
+    vim.api.nvim_create_autocmd("FileType", {
+      pattern = "shikigami",
+      callback = function(ev)
+        vim.keymap.set("t", "<C-q>", "<C-\\><C-n><cmd>close<cr>", { buffer = ev.buf })
+      end,
+    })
+<
+The buffer is deleted when the process exits (and only then) rather than via
+'bufhidden', so looking at another window does not kill a running TUI.
+
+==============================================================================
+LUA API                                                       *shikigami-api*
+
+    require("shikigami").setup(opts)   ~
+    require("shikigami").open(opts)    ~
+    require("shikigami").version()     ~
+
+`open()` takes the same `repository`, `revset` and `args` keys as `setup()` —
+per call, overriding the configured values — plus `extra`, a list appended
+last (this is what |:Shikigami| forwards). It returns the job id, or nil when
+the launch was refused.
+
+`version()` returns the output of `<cmd> --version`, or nil when the binary is
+missing or fails to run.
+
+==============================================================================
+HEALTH                                                     *shikigami-health*
+
+    :checkhealth shikigami
+
+Checks the Neovim version, the `shikigami` binary and its version, `jj` and
+its version, whether the cwd is inside a jj repository, and reports the
+resolved configuration.
+
+ vim:tw=78:ts=8:ft=help:norl:
