@@ -29,9 +29,9 @@ checkout = "v7.0.1"
 # renovate: datasource=github-tags depName=peter-evans/create-pull-request
 create_pull_request = "v8.1.1"
 # renovate: datasource=github-tags depName=rhysd/action-setup-vim
-rhysd_action_setup_vim = "v1"
+rhysd_action_setup_vim = "v1.6.1"
 # renovate: datasource=github-tags depName=JohnnyMorganz/stylua-action
-stylua_action = "v4"
+stylua_action = "v4.1.0"
 
 [nvim]
 # Which test framework `ci.yml` sets up and invokes.
