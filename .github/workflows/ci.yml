@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
-      - uses: rhysd/action-setup-vim@v1
+      - uses: rhysd/action-setup-vim@v1.6.1
         with:
           neovim: true
           version: ${{ matrix.nvim }}
@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: JohnnyMorganz/stylua-action@v4
+      - uses: JohnnyMorganz/stylua-action@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: latest
