@@ -2,10 +2,10 @@
 ## Shared conventions
 
 This file is the agent-agnostic source of truth (per the
-[agents.md](https://agents.md) convention). The matching
-`CLAUDE.md` and `GEMINI.md` files are thin shims that point back
-here so each tool's auto-load behaviour still finds something.
-**Edit AGENTS.md, not the shims.**
+[agents.md](https://agents.md) convention). Codex and Claude Code
+(>=2.1.277) read it directly; the `GEMINI.md` file is a thin shim
+for tools that don't yet auto-load `AGENTS.md`.
+**Edit AGENTS.md, not the shim.**
 
 ### Git workflow
 
@@ -13,6 +13,9 @@ here so each tool's auto-load behaviour still finds something.
   - Exception: trivial typo / whitespace / docs wording fixes.
 - Branch names: `feat/...`, `fix/...`, `chore/...`.
 - **PR titles + bodies in English. Commit messages in English.**
+  Issues (titles, bodies, comments) and PR review comments too: GitHub
+  is a worldwide surface, so everything written there is English in every
+  repo, whatever language the task or the conversation was in.
 - **Releases are PR-driven and tagging is automatic** — in repos that
   ship a release pipeline. Bump the version in the project's own
   manifest in a `chore/release-vX.Y.Z` PR; on merge to `main` the
